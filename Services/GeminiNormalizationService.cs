@@ -1,9 +1,9 @@
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using OcrPdf.Models;
+using DrawingOcrExtractor.Models;
 
-namespace OcrPdf.Services;
+namespace DrawingOcrExtractor.Services;
 
 public sealed class GeminiNormalizationService
 {
@@ -81,7 +81,7 @@ public sealed class GeminiNormalizationService
                 {
                     new
                     {
-                        text = $"You are a technical data extraction expert. Extract 'drawingName' and 'drawingNo' from OCR blocks provided.\n\nGUIDELINES:\n1. MAPPING: Use the 'Page' number from each block for the 'pageNumber' field.\n2. MULTILINGUAL: Correct OCR errors (e.g., 'MÂT BÂNG' -> 'MẶT BẰNG').\n3. FORMATTING: Clean 'drawingNo' (e.g., 'V T . 1 2 3' -> 'VT.123').\n4. OUTPUT: Return ONLY a JSON ARRAY of exactly {expectedCount} objects. Each must have 'drawingName', 'drawingNo', and 'pageNumber'. No conversational text."
+                        text = $"You are a technical data extraction expert. Extract 'drawingName' and 'drawingNo' from OCR blocks provided.\n\nGUIDELINES:\n1. MAPPING: Use the 'Page' number from each block for the 'pageNumber' field.\n2. MULTILINGUAL: Correct OCR errors (e.g., 'MÃ‚T BÃ‚NG' -> 'Máº¶T Báº°NG').\n3. FORMATTING: Clean 'drawingNo' (e.g., 'V T . 1 2 3' -> 'VT.123').\n4. OUTPUT: Return ONLY a JSON ARRAY of exactly {expectedCount} objects. Each must have 'drawingName', 'drawingNo', and 'pageNumber'. No conversational text."
                     }
                 }
             },

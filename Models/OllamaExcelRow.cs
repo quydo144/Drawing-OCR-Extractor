@@ -1,4 +1,4 @@
-namespace OcrPdf.Models;
+﻿namespace DrawingOcrExtractor.Models;
 
 public sealed record OllamaExcelRow(
     string DrawingName,
@@ -6,3 +6,4 @@ public sealed record OllamaExcelRow(
     int PageNumber,
     string Status = "OK",
     string ErrorMessage = "");
+

@@ -1,6 +1,6 @@
 ﻿using System.Windows;
 
-namespace OcrPdf;
+namespace DrawingOcrExtractor;
 
 /// <summary>
 /// Interaction logic for App.xaml
@@ -8,4 +8,5 @@ namespace OcrPdf;
 public partial class App : Application
 {
 }
+
 

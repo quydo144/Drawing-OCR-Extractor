@@ -1,13 +1,13 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Text.Json;
-using OcrPdf.Models;
+using DrawingOcrExtractor.Models;
 using PdfiumViewer;
 
-namespace OcrPdf.Services;
+namespace DrawingOcrExtractor.Services;
 
 public sealed class PdfProcessingService
 {
@@ -31,7 +31,7 @@ public sealed class PdfProcessingService
 
         using var pdfDocument = PdfDocument.Load(pdfPath);
         var pageCount = pdfDocument.PageCount;
-        logs.Add($"Số trang PDF: {pageCount}");
+        logs.Add($"Sá»‘ trang PDF: {pageCount}");
         var configuredParallelism = Math.Max(1, Math.Min(MaxParallelism, Environment.ProcessorCount));
         var effectiveParallelism = Math.Min(configuredParallelism, Math.Max(1, pageCount));
         logs.Add($"Xu ly song song PDF -> image -> base64 (toi da {effectiveParallelism} luong, DPI={OutputDpi}).");
@@ -140,3 +140,4 @@ public sealed class PdfProcessingService
         return outputBitmap;
     }
 }
+

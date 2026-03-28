@@ -6,10 +6,10 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Win32;
-using OcrPdf.Models;
-using OcrPdf.Services;
+using DrawingOcrExtractor.Models;
+using DrawingOcrExtractor.Services;
 
-namespace OcrPdf;
+namespace DrawingOcrExtractor;
 
 /// <summary>
 /// Interaction logic for MainWindow.xaml
@@ -19,7 +19,7 @@ public partial class MainWindow : System.Windows.Window
     private const int OcrGeminiBatchSize = 10;
     private static readonly string SettingsDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "OcrPdf");
+        "Drawing OCR Extractor");
     private static readonly string SettingsFilePath = Path.Combine(SettingsDirectory, "ui-settings.json");
     private readonly PdfProcessingService _pdfProcessingService;
     private readonly OllamaService _ollamaService;

@@ -1,8 +1,8 @@
-using ClosedXML.Excel;
+﻿using ClosedXML.Excel;
 using System.IO;
-using OcrPdf.Models;
+using DrawingOcrExtractor.Models;
 
-namespace OcrPdf.Services;
+namespace DrawingOcrExtractor.Services;
 
 public sealed class ExcelExportService
 {
@@ -63,3 +63,4 @@ public sealed class ExcelExportService
         worksheet.Rows(2, lastRow).Delete();
     }
 }
+

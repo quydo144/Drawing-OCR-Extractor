@@ -6,6 +6,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <AssemblyName>Drawing OCR Extractor</AssemblyName>
+    <Product>Drawing OCR Extractor</Product>
+    <RootNamespace>DrawingOcrExtractor</RootNamespace>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">

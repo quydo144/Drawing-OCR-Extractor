@@ -1,9 +1,10 @@
-﻿<Application x:Class="OcrPdf.App"
+﻿<Application x:Class="DrawingOcrExtractor.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:OcrPdf"
+             xmlns:local="clr-namespace:DrawingOcrExtractor"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
 
     </Application.Resources>
 </Application>
+

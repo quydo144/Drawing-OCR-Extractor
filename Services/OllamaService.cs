@@ -1,9 +1,9 @@
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using OcrPdf.Models;
+using DrawingOcrExtractor.Models;
 
-namespace OcrPdf.Services;
+namespace DrawingOcrExtractor.Services;
 
 public sealed class OllamaService
 {
@@ -38,8 +38,8 @@ public sealed class OllamaService
             cancellationToken.ThrowIfCancellationRequested();
 
             var page = orderedPages[i];
-            var progressMessage = $"Đã xử lý Ollama trang {page.PageNumber}";
-            log($"Gửi trang {page.PageNumber} lên Ollama...");
+            var progressMessage = $"ÄÃ£ xá»­ lÃ½ Ollama trang {page.PageNumber}";
+            log($"Gá»­i trang {page.PageNumber} lÃªn Ollama...");
 
             try
             {
@@ -65,7 +65,7 @@ public sealed class OllamaService
                         if (!response.IsSuccessStatusCode)
                         {
                             lastErrorMessage = $"HTTP {(int)response.StatusCode}: {responseBody}";
-                            log($"Trang {page.PageNumber} lỗi HTTP attempt {attempt}/{MaxRetryAttempts}: {lastErrorMessage}");
+                            log($"Trang {page.PageNumber} lá»—i HTTP attempt {attempt}/{MaxRetryAttempts}: {lastErrorMessage}");
                             continue;
                         }
 
@@ -82,7 +82,7 @@ public sealed class OllamaService
                     }
                     catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
                     {
-                        lastErrorMessage = $"Timeout khi gọi Ollama (vuot {OllamaTimeoutSeconds} giay).";
+                        lastErrorMessage = $"Timeout khi gá»i Ollama (vuot {OllamaTimeoutSeconds} giay).";
                     }
                     catch (Exception ex)
                     {
@@ -95,7 +95,7 @@ public sealed class OllamaService
                     var finalError = lastErrorMessage ?? "Unknown error";
                     log($"Trang {page.PageNumber} that bai sau {MaxRetryAttempts} lan: {finalError}");
                     rows.Add(CreateFailedRow(page.PageNumber, finalError));
-                    progressMessage = $"Trang {page.PageNumber} lỗi: {finalError}";
+                    progressMessage = $"Trang {page.PageNumber} lá»—i: {finalError}";
                 }
             }
             finally
@@ -143,3 +143,4 @@ public sealed class OllamaService
         return new OllamaExcelRow(string.Empty, string.Empty, pageNumber, "FAILED", normalizedMessage);
     }
 }
+
