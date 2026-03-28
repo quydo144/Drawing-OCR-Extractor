@@ -31,15 +31,15 @@ public sealed class OllamaService
         var rows = new List<OllamaExcelRow>();
         var ocrBlocks = new List<OcrPageBlock>();
         var orderedPages = pages.OrderBy(p => p.PageNumber).ToList();
-        log("Da sap xep danh sach theo PageNumber tang dan. Bat dau OCR anh bang glm-ocr tuan tu.");
+        log("Đã sắp xếp danh sách theo PageNumber tăng dần. Bắt đầu OCR ảnh bằng glm-ocr tuần tự.");
 
         for (var i = 0; i < orderedPages.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             var page = orderedPages[i];
-            var progressMessage = $"ÄÃ£ xá»­ lÃ½ Ollama trang {page.PageNumber}";
-            log($"Gá»­i trang {page.PageNumber} lÃªn Ollama...");
+            var progressMessage = $"Đã xử lý Ollama trang {page.PageNumber}";
+            log($"Gửi trang {page.PageNumber} lên Ollama...");
 
             try
             {
@@ -65,7 +65,7 @@ public sealed class OllamaService
                         if (!response.IsSuccessStatusCode)
                         {
                             lastErrorMessage = $"HTTP {(int)response.StatusCode}: {responseBody}";
-                            log($"Trang {page.PageNumber} lá»—i HTTP attempt {attempt}/{MaxRetryAttempts}: {lastErrorMessage}");
+                            log($"Trang {page.PageNumber} lỗi HTTP attempt {attempt}/{MaxRetryAttempts}: {lastErrorMessage}");
                             continue;
                         }
 
@@ -73,7 +73,7 @@ public sealed class OllamaService
 
                         if (string.IsNullOrWhiteSpace(ocrText))
                         {
-                            lastErrorMessage = "OCR response rong.";
+                            lastErrorMessage = "OCR response rỗng.";
                             continue;
                         }
 
@@ -82,7 +82,7 @@ public sealed class OllamaService
                     }
                     catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
                     {
-                        lastErrorMessage = $"Timeout khi gá»i Ollama (vuot {OllamaTimeoutSeconds} giay).";
+                        lastErrorMessage = $"Timeout khi gọi Ollama (vượt {OllamaTimeoutSeconds} giây).";
                     }
                     catch (Exception ex)
                     {
@@ -93,9 +93,9 @@ public sealed class OllamaService
                 if (!isSuccess)
                 {
                     var finalError = lastErrorMessage ?? "Unknown error";
-                    log($"Trang {page.PageNumber} that bai sau {MaxRetryAttempts} lan: {finalError}");
+                    log($"Trang {page.PageNumber} thất bại sau {MaxRetryAttempts} lần: {finalError}");
                     rows.Add(CreateFailedRow(page.PageNumber, finalError));
-                    progressMessage = $"Trang {page.PageNumber} lá»—i: {finalError}";
+                    progressMessage = $"Trang {page.PageNumber} lỗi: {finalError}";
                 }
             }
             finally
@@ -107,7 +107,7 @@ public sealed class OllamaService
 
         if (ocrBlocks.Count == 0)
         {
-            log("Khong co OCR block hop le de normalize.");
+            log("Không có OCR block hợp lệ để normalize.");
             return new OcrExtractionResult([], rows.OrderBy(r => r.PageNumber).ToList());
         }
 

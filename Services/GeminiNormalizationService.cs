@@ -28,12 +28,12 @@ public sealed class GeminiNormalizationService
     {
         if (ocrBlocks.Count == 0)
         {
-            log("Khong co OCR block de gui Gemini.");
+            log("Không có OCR block để gửi Gemini.");
             return [];
         }
 
         var rows = new List<OllamaExcelRow>();
-        log($"Bat dau normalize {ocrBlocks.Count} block OCR (1 request Gemini cho batch nay).");
+        log($"Bắt đầu normalize {ocrBlocks.Count} block OCR (1 request Gemini cho batch này).");
 
         cancellationToken.ThrowIfCancellationRequested();
         var chunkList = ocrBlocks.OrderBy(c => c.PageNumber).ToList();
@@ -47,19 +47,19 @@ public sealed class GeminiNormalizationService
             var generatedText = await GenerateNormalizationJsonAsync(prompt, chunkList.Count, geminiApiKey, log, cancellationToken);
             var normalizedRows = ParseNormalizedRows(generatedText, chunkList);
             rows.AddRange(normalizedRows);
-            log($"Normalize batch thanh cong: {normalizedRows.Count} dong.");
+            log($"Normalize batch thành công: {normalizedRows.Count} dòng.");
         }
         catch (Exception ex)
         {
-            log($"Normalize batch that bai: {ex.Message}");
-            log($"Chi tiet loi batch: {ex}");
+            log($"Normalize batch thất bại: {ex.Message}");
+            log($"Chi tiết lỗi batch: {ex}");
             rows.AddRange(chunkList.Select(c => CreateFailedRow(c.PageNumber, $"Normalize failed: {ex.Message}")));
         }
 
         return rows.OrderBy(r => r.PageNumber).ToList();
     }
 
-    public async Task<string> GenerateNormalizationJsonAsync(
+    private async Task<string> GenerateNormalizationJsonAsync(
         string prompt,
         int expectedCount,
         string geminiApiKey,
@@ -68,7 +68,7 @@ public sealed class GeminiNormalizationService
     {
         if (string.IsNullOrWhiteSpace(geminiApiKey))
         {
-            var error = "Thieu Gemini API Key.";
+            var error = "Thiếu Gemini API Key.";
             log?.Invoke(error);
             throw new InvalidOperationException(error);
         }
@@ -81,7 +81,7 @@ public sealed class GeminiNormalizationService
                 {
                     new
                     {
-                        text = $"You are a technical data extraction expert. Extract 'drawingName' and 'drawingNo' from OCR blocks provided.\n\nGUIDELINES:\n1. MAPPING: Use the 'Page' number from each block for the 'pageNumber' field.\n2. MULTILINGUAL: Correct OCR errors (e.g., 'MÃ‚T BÃ‚NG' -> 'Máº¶T Báº°NG').\n3. FORMATTING: Clean 'drawingNo' (e.g., 'V T . 1 2 3' -> 'VT.123').\n4. OUTPUT: Return ONLY a JSON ARRAY of exactly {expectedCount} objects. Each must have 'drawingName', 'drawingNo', and 'pageNumber'. No conversational text."
+                        text = $"You are a technical data extraction expert. Extract 'drawingName' and 'drawingNo' from OCR blocks provided.\n\nGUIDELINES:\n1. MAPPING: Use the 'Page' number from each block for the 'pageNumber' field.\n2. MULTILINGUAL: Correct OCR errors (e.g., 'MÃ‚T BÃ‚NG' -> 'MẶT BẰNG').\n3. FORMATTING: Clean 'drawingNo' (e.g., 'V T . 1 2 3' -> 'VT.123').\n4. OUTPUT: Return ONLY a JSON ARRAY of exactly {expectedCount} objects. Each must have 'drawingName', 'drawingNo', and 'pageNumber'. No conversational text."
                     }
                 }
             },
@@ -121,7 +121,7 @@ public sealed class GeminiNormalizationService
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                var error = $"Gemini request timeout sau {GeminiRequestTimeout.TotalSeconds:0} giay.";
+                var error = $"Gemini request timeout sau {GeminiRequestTimeout.TotalSeconds:0} giây.";
                 log?.Invoke(error);
                 throw new InvalidOperationException(error);
             }
@@ -135,7 +135,7 @@ public sealed class GeminiNormalizationService
                     var normalizedJson = ExtractGeminiText(responseBody);
                     if (string.IsNullOrWhiteSpace(normalizedJson))
                     {
-                        var error = "Gemini tra ve response rong sau khi extract text.";
+                        var error = "Gemini trả về response rỗng sau khi extract text.";
                         log?.Invoke(error);
                         throw new InvalidOperationException(error);
                     }
@@ -147,7 +147,7 @@ public sealed class GeminiNormalizationService
                 if (statusCode == 503 && currentApiUrl != GeminiFallbackApiUrl)
                 {
                     currentApiUrl = GeminiFallbackApiUrl;
-                    log?.Invoke("Gemini HTTP 503. Chuyen sang model gemini-3.1-flash-lite-preview.");
+                    log?.Invoke("Gemini HTTP 503. Chuyển sang model gemini-2.5-flash-lite.");
                 }
 
                 if ((statusCode == 500 || statusCode == 503) && attempt < maxRetries)
@@ -163,7 +163,7 @@ public sealed class GeminiNormalizationService
             }
         }
 
-        throw new InvalidOperationException("Gemini request that bai sau tat ca retry.");
+        throw new InvalidOperationException("Gemini request thất bại sau tất cả retry.");
     }
 
     private static string BuildNormalizationPrompt(IReadOnlyList<OcrPageBlock> blocks)
@@ -185,7 +185,7 @@ public sealed class GeminiNormalizationService
         using var jsonDocument = JsonDocument.Parse(cleaned);
         if (jsonDocument.RootElement.ValueKind != JsonValueKind.Array)
         {
-            throw new InvalidOperationException("Normalize response khong phai JSON array.");
+            throw new InvalidOperationException("Normalize response không phải JSON array.");
         }
 
         var result = new List<OllamaExcelRow>();
@@ -219,7 +219,7 @@ public sealed class GeminiNormalizationService
 
         foreach (var page in sourcePages.Where(p => !mappedPages.Contains(p)))
         {
-            result.Add(CreateFailedRow(page, "Khong co ket qua normalize cho page nay."));
+            result.Add(CreateFailedRow(page, "Không có kết quả normalize cho page này."));
         }
 
         return result.OrderBy(r => r.PageNumber).ToList();

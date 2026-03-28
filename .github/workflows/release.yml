@@ -43,7 +43,12 @@ jobs:
           New-Item -ItemType Directory -Path dist -Force | Out-Null
           Copy-Item publish/win-x64/* dist/ -Recurse -Force
           if (Test-Path setup_ollama_glm_ocr.bat) { Copy-Item setup_ollama_glm_ocr.bat dist/ -Force }
-          if (Test-Path README.md) { Copy-Item README.md dist/ -Force }
+          if (Test-Path README.user.md) {
+            Copy-Item README.user.md dist/README.md -Force
+          }
+          elseif (Test-Path README.md) {
+            Copy-Item README.md dist/ -Force
+          }
           Compress-Archive -Path dist/* -DestinationPath Drawing-OCR-Extractor-win-x64.zip -Force
 
       - name: Upload build artifact

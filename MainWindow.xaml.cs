@@ -151,7 +151,7 @@ public partial class MainWindow : System.Windows.Window
 
                 if (ocrResult.OcrBlocks.Count > 0)
                 {
-                    AppendLine($"Gui request Gemini cho OCR batch page {firstPage}-{lastPage}...");
+                    AppendLine($"Gửi request Gemini cho OCR batch page {firstPage}-{lastPage}...");
                     var normalizedRows = await _geminiNormalizationService.NormalizeOcrBlocksAsync(
                         ocrResult.OcrBlocks,
                         geminiApiKey,
@@ -219,7 +219,7 @@ public partial class MainWindow : System.Windows.Window
 
         if (pages is null || pages.Count == 0)
         {
-            throw new InvalidOperationException("File Base64 rong hoac sai dinh dang.");
+            throw new InvalidOperationException("File Base64 rỗng hoặc sai định dạng.");
         }
 
         return pages.OrderBy(p => p.PageNumber).ToList();

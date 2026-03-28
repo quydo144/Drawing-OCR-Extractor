@@ -20,7 +20,6 @@ public sealed class PdfProcessingService
         Action<ConversionPageProgress>? onProgress = null,
         CancellationToken cancellationToken = default)
     {
-        var logs = new List<string>();
         var pdfDirectory = Path.GetDirectoryName(pdfPath) ?? Environment.CurrentDirectory;
         var pdfName = Path.GetFileNameWithoutExtension(pdfPath);
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
@@ -31,13 +30,10 @@ public sealed class PdfProcessingService
 
         using var pdfDocument = PdfDocument.Load(pdfPath);
         var pageCount = pdfDocument.PageCount;
-        logs.Add($"Sá»‘ trang PDF: {pageCount}");
         var configuredParallelism = Math.Max(1, Math.Min(MaxParallelism, Environment.ProcessorCount));
         var effectiveParallelism = Math.Min(configuredParallelism, Math.Max(1, pageCount));
-        logs.Add($"Xu ly song song PDF -> image -> base64 (toi da {effectiveParallelism} luong, DPI={OutputDpi}).");
 
         var parallelResults = new Base64PageEntry[pageCount];
-        var parallelLogs = new string[pageCount];
         var completedPages = 0;
 
         Parallel.For(0, pageCount, new ParallelOptions
@@ -58,7 +54,7 @@ public sealed class PdfProcessingService
                 parallelResults[pageIndex] = new Base64PageEntry(pageIndex + 1, pageKey, imageFileName, base64);
 
                 var done = Interlocked.Increment(ref completedPages);
-                onProgress?.Invoke(new ConversionPageProgress(done, pageCount, parallelLogs[pageIndex]));
+                onProgress?.Invoke(new ConversionPageProgress(done, pageCount, $"Đã xử lý trang {pageIndex + 1}/{pageCount}"));
 
                 return localPdfDocument;
             },
@@ -70,15 +66,13 @@ public sealed class PdfProcessingService
 
             if (parallelResults[i] is null)
             {
-                throw new InvalidOperationException($"Khong tao duoc du lieu Base64 cho trang {i + 1}.");
+                throw new InvalidOperationException($"Không tạo được dữ liệu Base64 cho trang {i + 1}.");
             }
-
-            logs.Add(parallelLogs[i]);
         }
 
         WriteBase64Entries(base64File, parallelResults, cancellationToken);
 
-        return new ConversionResult(outputDir, base64File, logs);
+        return new ConversionResult(outputDir, base64File);
     }
 
     private static void WriteBase64Entries(string base64File, IReadOnlyList<Base64PageEntry> entries, CancellationToken cancellationToken)

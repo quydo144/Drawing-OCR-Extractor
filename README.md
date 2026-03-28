@@ -161,6 +161,7 @@ Kết quả:
 - Artifact: `Drawing-OCR-Extractor-win-x64`
 - File zip: `Drawing-OCR-Extractor-win-x64.zip`
 - Khi chạy bằng tag, workflow tự tạo GitHub Release và đính kèm file zip.
+- Nếu có `README.user.md`, workflow sẽ đóng gói file này thành `README.md` trong bản phát hành cho người dùng cuối.
 
 Lệnh tạo release:
 
