@@ -103,7 +103,7 @@ public partial class MainWindow : System.Windows.Window
 
         try
         {
-            AppendLine("Đang xử lý, vui lòng chờ...");
+            AppendLine("Đang xử lý file PDF, vui lòng chờ...");
             var cancellationToken = _runCts.Token;
 
             var result = await Task.Run(
@@ -184,6 +184,20 @@ public partial class MainWindow : System.Windows.Window
             }
 
             AppendLine("Đã hoàn tất OCR và normalize dữ liệu.");
+
+            try
+            {
+                if (File.Exists(result.Base64OutputFile))
+                {
+                    File.Delete(result.Base64OutputFile);
+                    AppendLine("Đã xóa file tạm pages_base64.json.");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendLine($"Không thể xóa pages_base64.json: {ex.Message}");
+            }
+
             AppendLine($"Tổng thời gian chạy: {FormatElapsed(_runStopwatch.Elapsed)}");
             SetProgressUiComplete();
         }
@@ -268,7 +282,10 @@ public partial class MainWindow : System.Windows.Window
 
         ConversionProgressBar.Value = percent;
         ConversionStatusTextBlock.Text = $"Đang xử lý PDF: {progress.CompletedPages}/{progress.TotalPages}";
-        AppendLine(progress.Message);
+        if (!string.IsNullOrWhiteSpace(progress.Message))
+        {
+            AppendLine(progress.Message);
+        }
     }
 
     private void UpdateOllamaProgress(int completedPages, int totalPages, string message)

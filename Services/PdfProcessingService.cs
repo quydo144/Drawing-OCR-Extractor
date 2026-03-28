@@ -54,7 +54,7 @@ public sealed class PdfProcessingService
                 parallelResults[pageIndex] = new Base64PageEntry(pageIndex + 1, pageKey, imageFileName, base64);
 
                 var done = Interlocked.Increment(ref completedPages);
-                onProgress?.Invoke(new ConversionPageProgress(done, pageCount, $"Đã xử lý trang {pageIndex + 1}/{pageCount}"));
+                onProgress?.Invoke(new ConversionPageProgress(done, pageCount, string.Empty));
 
                 return localPdfDocument;
             },
