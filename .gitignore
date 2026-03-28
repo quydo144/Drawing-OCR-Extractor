@@ -1,0 +1,32 @@
+# Build outputs
+bin/
+obj/
+
+# User-specific files
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+
+# NuGet packages folder (legacy)
+packages/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+
+# Test and coverage artifacts
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# OS files
+Thumbs.db
+Desktop.ini

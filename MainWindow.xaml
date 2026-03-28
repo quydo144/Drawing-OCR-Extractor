@@ -1,0 +1,139 @@
+﻿<Window x:Class="OcrPdf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="OCR PDF - Ollama + Gemini"
+        Height="560"
+        Width="820"
+        MinHeight="560"
+        MinWidth="820">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   FontSize="19"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,10"
+                   Text="PDF -> Ảnh PNG -> Base64 -> OCR (Ollama + Gemini)"/>
+
+        <Grid Grid.Row="1"
+              Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="140"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBox x:Name="PdfPathTextBox"
+                     Grid.Column="0"
+                     IsReadOnly="True"
+                     FontSize="13"
+                     VerticalContentAlignment="Center"
+                     Padding="7,5"
+                     Text="Chưa chọn tệp PDF"/>
+
+            <Button Grid.Column="2"
+                    x:Name="SelectPdfButton"
+                    Content="Chọn file PDF"
+                    Height="34"
+                    FontSize="13"
+                    Click="SelectPdfButton_Click"/>
+        </Grid>
+
+        <Grid Grid.Row="2"
+              Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       VerticalAlignment="Center"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Text="Gemini API key"/>
+
+            <PasswordBox x:Name="GeminiApiKeyPasswordBox"
+                         Grid.Column="2"
+                         FontSize="13"
+                         Padding="7,5"
+                         VerticalContentAlignment="Center"
+                         PasswordChanged="GeminiApiKeyPasswordBox_PasswordChanged"/>
+        </Grid>
+
+        <StackPanel Grid.Row="3"
+                    Orientation="Horizontal"
+                    Margin="0,0,0,10">
+            <Button x:Name="ConvertButton"
+                    Content="Bắt đầu xử lý"
+                    Width="220"
+                    Height="36"
+                    FontSize="13"
+                    Click="ConvertButton_Click"/>
+            <Button x:Name="CancelButton"
+                    Content="Hủy"
+                    Width="90"
+                    Height="36"
+                    Margin="8,0,0,0"
+                    FontSize="13"
+                    IsEnabled="False"
+                    Click="CancelButton_Click"/>
+            <TextBlock Margin="12,0,0,0"
+                       VerticalAlignment="Center"
+                       FontSize="12"
+                       Foreground="#555"
+                       Text="Ảnh PNG và dữ liệu Base64 sẽ lưu trong cùng thư mục PDF."/>
+        </StackPanel>
+
+        <Grid Grid.Row="4"
+              Margin="0,0,0,10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <ProgressBar x:Name="ConversionProgressBar"
+                         Grid.Row="0"
+                         Height="12"
+                         Minimum="0"
+                         Maximum="100"
+                         Value="0"/>
+
+            <TextBlock x:Name="ConversionStatusTextBlock"
+                       Grid.Row="1"
+                       Margin="0,6,0,0"
+                       FontSize="11"
+                       Foreground="#555"
+                       Text="Sẵn sàng xử lý"/>
+
+            <TextBlock x:Name="RunTimeTextBlock"
+                       Grid.Row="2"
+                       Margin="0,4,0,0"
+                       FontSize="11"
+                       Foreground="#555"
+                       Text="Thời gian chạy: 00:00"/>
+        </Grid>
+
+        <TextBox Grid.Row="5"
+                 x:Name="OutputTextBox"
+                 FontFamily="Consolas"
+                 FontSize="12"
+                 AcceptsReturn="True"
+                 AcceptsTab="True"
+                 VerticalScrollBarVisibility="Auto"
+                 HorizontalScrollBarVisibility="Auto"
+                 TextWrapping="Wrap"
+                 IsReadOnly="True"/>
+    </Grid>
+</Window>
