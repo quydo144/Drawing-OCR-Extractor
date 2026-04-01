@@ -48,18 +48,18 @@ jobs:
           elseif (Test-Path README.md) {
             Copy-Item README.md dist/ -Force
           }
-          Compress-Archive -Path dist/* -DestinationPath Drawing-OCR-Extractor-win-x64.zip -Force
+          Compress-Archive -Path dist/* -DestinationPath Drawing-OCR-Extractor-${{ github.ref_name }}.zip -Force
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Drawing-OCR-Extractor-win-x64
-          path: Drawing-OCR-Extractor-win-x64.zip
+          name: Drawing-OCR-Extractor-${{ github.ref_name }}
+          path: Drawing-OCR-Extractor-${{ github.ref_name }}.zip
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: Drawing-OCR-Extractor-win-x64.zip
+          files: Drawing-OCR-Extractor-${{ github.ref_name }}.zip
           generate_release_notes: true
 
