@@ -6,9 +6,14 @@ namespace DrawingOcrExtractor.Services;
 
 public sealed class ExcelExportService
 {
-    public string Export(string outputDirectory, IReadOnlyList<OllamaExcelRow> rows)
+    public string Export(string pdfPath, IReadOnlyList<OllamaExcelRow> rows)
     {
-        var excelPath = Path.Combine(outputDirectory, "ollama_results.xlsx");
+        var pdfFileName = Path.GetFileNameWithoutExtension(pdfPath);
+        var safePdfFileName = SanitizeFileName(pdfFileName);
+        var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+        var resultDirectory = Path.Combine(AppContext.BaseDirectory, "Result");
+        Directory.CreateDirectory(resultDirectory);
+        var excelPath = Path.Combine(resultDirectory, $"List_{safePdfFileName}_{timestamp}.xlsx");
 
         using var workbook = File.Exists(excelPath)
             ? new XLWorkbook(excelPath)
@@ -36,6 +41,18 @@ public sealed class ExcelExportService
 
         workbook.SaveAs(excelPath);
         return excelPath;
+    }
+
+    private static string SanitizeFileName(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return "unknown";
+        }
+
+        var invalidChars = Path.GetInvalidFileNameChars();
+        var sanitized = new string(fileName.Select(c => invalidChars.Contains(c) ? '_' : c).ToArray()).Trim();
+        return string.IsNullOrWhiteSpace(sanitized) ? "unknown" : sanitized;
     }
 
     private static void EnsureHeader(IXLWorksheet worksheet)

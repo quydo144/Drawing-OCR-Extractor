@@ -60,8 +60,8 @@ public sealed class GeminiNormalizationService
     }
 
     private async Task<string> GenerateNormalizationJsonAsync(
-        string prompt,
-        int expectedCount,
+        string ocrInputPrompt,
+        int expectedCountFromInput,
         string geminiApiKey,
         Action<string>? log = null,
         CancellationToken cancellationToken = default)
@@ -73,6 +73,30 @@ public sealed class GeminiNormalizationService
             throw new InvalidOperationException(error);
         }
 
+        string drawingNoRegex = @"^[A-Z]{2}\.\d{3}\.\d{2}\.[A-Z]{2}\d{4}[A-Z]$";
+        string prompt = $$"""
+            You are a technical data extraction expert. Extract 'drawingName' and 'drawingNo' from the provided OCR text blocks.
+            GUIDELINES:
+            1. MAPPING: Use the 'Page' number from each block for the 'pageNumber' field.
+            2. VIETNAMESE DRAWING NAME (STRICT): 
+            - The 'drawingName' MUST always be in Vietnamese.
+            - Fix Vietnamese encoding/OCR errors (e.g., 'MÃ‚T BÃ‚NG' -> 'MẶT BẰNG', 'CHI TIET' -> 'CHI TIẾT').
+            - If the OCR output is in English or mangled, translate/correct it back to the standard Vietnamese technical term used in construction drawings.
+            - Ensure proper tone marks (dấu) and casing (typically UPPERCASE for drawing names).
+            3. DRAWING NO. PATTERN: Identify 'drawingNo' strictly matching this regex: {{drawingNoRegex}}
+            4. OCR AMBIGUITY FIX (DRAWING NO):
+            - Drawing numbers often confuse 'L', 'I' (letters) with '1' (number) or 'O' (letter) with '0' (zero).
+            - Referencing the Regex: The first 2 chars are LETTERS, then 3 DIGITS, then 2 DIGITS, then 2 LETTERS, then 4 DIGITS, ending with 1 LETTER.
+            - Example: If OCR says "KL.1O1.O1.AR2O24A", correct it to "KL.101.01.AR2024A" to fit the pattern.
+            5. CLEANING: Remove spaces in 'drawingNo' (e.g., 'K T . 1 0 1' -> 'KT.101').
+            6. NULL SAFETY: If information cannot be found, return an empty string "" for those fields.
+            7. OUTPUT: Return ONLY a JSON ARRAY of exactly {{expectedCountFromInput}} objects. No markdown tags or conversational text.
+            Structure:
+            [
+                { "drawingName": "...", "drawingNo": "...", "pageNumber": ... }
+            ]
+            """;
+
         var request = new
         {
             system_instruction = new
@@ -81,7 +105,7 @@ public sealed class GeminiNormalizationService
                 {
                     new
                     {
-                        text = $"You are a technical data extraction expert. Extract 'drawingName' and 'drawingNo' from OCR blocks provided.\n\nGUIDELINES:\n1. MAPPING: Use the 'Page' number from each block for the 'pageNumber' field.\n2. MULTILINGUAL: Correct OCR errors (e.g., 'MÃ‚T BÃ‚NG' -> 'MẶT BẰNG').\n3. FORMATTING: Clean 'drawingNo' (e.g., 'V T . 1 2 3' -> 'VT.123').\n4. OUTPUT: Return ONLY a JSON ARRAY of exactly {expectedCount} objects. Each must have 'drawingName', 'drawingNo', and 'pageNumber'. No conversational text."
+                        text = prompt
                     }
                 }
             },
@@ -92,7 +116,7 @@ public sealed class GeminiNormalizationService
                     role = "user",
                     parts = new[]
                     {
-                        new { text = prompt }
+                        new { text = ocrInputPrompt }
                     }
                 }
             },
@@ -144,17 +168,26 @@ public sealed class GeminiNormalizationService
                 }
 
                 var statusCode = (int)response.StatusCode;
-                if (statusCode == 503 && currentApiUrl != GeminiFallbackApiUrl)
+                if (statusCode == 429)
                 {
-                    currentApiUrl = GeminiFallbackApiUrl;
-                    log?.Invoke("Gemini HTTP 503. Chuyển sang model gemini-2.5-flash-lite.");
+                    var quotaError = "GEMINI_QUOTA_EXCEEDED: Gemini API đã hết quota (HTTP 429 Too Many Requests). Vui lòng thay Gemini API key khác.";
+                    log?.Invoke(quotaError);
+                    throw new InvalidOperationException(quotaError);
                 }
-
-                if ((statusCode == 500 || statusCode == 503) && attempt < maxRetries)
+                else if (statusCode == 500 || statusCode == 503)
                 {
-                    log?.Invoke($"Gemini HTTP {statusCode}. Retry {attempt + 1}/{maxRetries} sau {delayMs / 1000}s...");
-                    await Task.Delay(delayMs, cancellationToken);
-                    continue;
+                    if (statusCode == 503 && currentApiUrl != GeminiFallbackApiUrl)
+                    {
+                        currentApiUrl = GeminiFallbackApiUrl;
+                        log?.Invoke("Gemini HTTP 503. Chuyển sang model gemini-2.5-flash-lite.");
+                    }
+
+                    if (attempt < maxRetries)
+                    {
+                        log?.Invoke($"Gemini HTTP {statusCode}. Retry {attempt + 1}/{maxRetries} sau {delayMs / 1000}s...");
+                        await Task.Delay(delayMs, cancellationToken);
+                        continue;
+                    }
                 }
 
                 var error2 = $"Gemini HTTP {statusCode}: {responseBody}";

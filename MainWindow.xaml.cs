@@ -161,7 +161,7 @@ public partial class MainWindow : System.Windows.Window
 
                     if (normalizedRows.Count > 0)
                     {
-                        excelPath = _excelExportService.Export(result.OutputImageDirectory, rows);
+                        excelPath = _excelExportService.Export(_pdfPath, rows);
                         AppendLine($"Đã cập nhật Excel sau batch: +{normalizedRows.Count} dòng, tổng {rows.Count} dòng.");
                         AppendLine($"File Excel hiện tại: {excelPath}");
                     }
@@ -178,7 +178,7 @@ public partial class MainWindow : System.Windows.Window
             }
             else
             {
-                excelPath ??= _excelExportService.Export(result.OutputImageDirectory, rows);
+                excelPath ??= _excelExportService.Export(_pdfPath, rows);
                 AppendLine($"Đã ghi {rows.Count} dòng vào Excel.");
                 AppendLine($"Đã xuất Excel: {excelPath}");
             }
@@ -209,7 +209,22 @@ public partial class MainWindow : System.Windows.Window
         catch (Exception ex)
         {
             AppendLine($"Lỗi: {ex.Message}");
-            MessageBox.Show(ex.Message, "Lỗi chuyển đổi", MessageBoxButton.OK, MessageBoxImage.Error);
+
+            if (ex.Message.Contains("GEMINI_QUOTA_EXCEEDED", StringComparison.Ordinal))
+            {
+                GeminiApiKeyPasswordBox.Password = string.Empty;
+                SaveGeminiApiKeyToLocalStore(string.Empty);
+                MessageBox.Show(
+                    "Gemini API đã hết quota (HTTP 429 Too Many Requests). Đã xóa API key cũ, vui lòng thay Gemini API key khác.",
+                    "Hết quota Gemini",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+            else
+            {
+                MessageBox.Show(ex.Message, "Lỗi chuyển đổi", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
             ConversionStatusTextBlock.Text = "Đã lỗi";
         }
         finally

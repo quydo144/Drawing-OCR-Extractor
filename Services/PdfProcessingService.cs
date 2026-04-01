@@ -12,21 +12,18 @@ namespace DrawingOcrExtractor.Services;
 public sealed class PdfProcessingService
 {
     private const double OutputScale = 0.5;
+    private const double A0OutputScale = 0.75;
     private const int MaxParallelism = 10;
     private const int OutputDpi = 170;
+    private const int A0OutputDpi = 230;
 
     public ConversionResult ConvertPdfPagesToImagesAndBase64(
         string pdfPath,
         Action<ConversionPageProgress>? onProgress = null,
         CancellationToken cancellationToken = default)
     {
-        var pdfDirectory = Path.GetDirectoryName(pdfPath) ?? Environment.CurrentDirectory;
-        var pdfName = Path.GetFileNameWithoutExtension(pdfPath);
-        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
-        var outputDir = Path.Combine(pdfDirectory, $"{pdfName}_pages_{timestamp}");
-        Directory.CreateDirectory(outputDir);
-
-        var base64File = Path.Combine(outputDir, "pages_base64.json");
+        var outputDir = AppContext.BaseDirectory;
+        var base64File = Path.Combine(AppContext.BaseDirectory, "pages_base64.json");
 
         using var pdfDocument = PdfDocument.Load(pdfPath);
         var pageCount = pdfDocument.PageCount;
@@ -44,11 +41,14 @@ public sealed class PdfProcessingService
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                using var renderedBitmap = RenderPdfPage(localPdfDocument, pageIndex);
-                using var processedBitmap = ProcessBitmap(renderedBitmap);
+                var pageSize = localPdfDocument.PageSizes[pageIndex];
+                using var renderedBitmap = RenderPdfPage(localPdfDocument, pageIndex, pageSize);
+                using var processedBitmap = ProcessBitmap(renderedBitmap, pageSize);
 
                 var pngBytes = EncodePng(processedBitmap);
                 var imageFileName = $"page_{pageIndex + 1:D4}.png";
+                // var imageFilePath = Path.Combine(outputDir, imageFileName);
+                // File.WriteAllBytes(imageFilePath, pngBytes);
                 var base64 = Convert.ToBase64String(pngBytes);
                 var pageKey = $"page_{pageIndex + 1:D4}";
                 parallelResults[pageIndex] = new Base64PageEntry(pageIndex + 1, pageKey, imageFileName, base64);
@@ -93,12 +93,13 @@ public sealed class PdfProcessingService
         writer.Flush();
     }
 
-    private static Bitmap RenderPdfPage(PdfDocument pdfDocument, int pageIndex)
+    private static Bitmap RenderPdfPage(PdfDocument pdfDocument, int pageIndex, SizeF pageSize)
     {
-        var pageSize = pdfDocument.PageSizes[pageIndex];
-        var width = Math.Max(1, (int)Math.Round(pageSize.Width / 72f * OutputDpi));
-        var height = Math.Max(1, (int)Math.Round(pageSize.Height / 72f * OutputDpi));
-        return (Bitmap)pdfDocument.Render(pageIndex, width, height, OutputDpi, OutputDpi, PdfRenderFlags.Annotations);
+        var paperSize = DetectPaperSize(pageSize);
+        var dpi = paperSize == "A0" ? A0OutputDpi : OutputDpi;
+        var width = Math.Max(1, (int)Math.Round(pageSize.Width / 72f * dpi));
+        var height = Math.Max(1, (int)Math.Round(pageSize.Height / 72f * dpi));
+        return (Bitmap)pdfDocument.Render(pageIndex, width, height, dpi, dpi, PdfRenderFlags.Annotations);
     }
 
     private static byte[] EncodePng(Bitmap bitmap)
@@ -108,23 +109,39 @@ public sealed class PdfProcessingService
         return stream.ToArray();
     }
 
-    private static Bitmap ProcessBitmap(Bitmap sourceBitmap)
+    private static Bitmap ProcessBitmap(Bitmap sourceBitmap, SizeF pageSize)
     {
-        var cropWidth = Math.Max(1, sourceBitmap.Width / 4);
-        var cropX = sourceBitmap.Width - cropWidth;
-        var cropHeight = Math.Max(1, sourceBitmap.Height / 2);
-        var cropY = sourceBitmap.Height - cropHeight;
+        var paperSize = DetectPaperSize(pageSize);
+        int cropWidth, cropHeight, cropX, cropY;
 
-        var outputWidth = Math.Max(1, (int)Math.Round(cropWidth * OutputScale));
-        var outputHeight = Math.Max(1, (int)Math.Round(cropHeight * OutputScale));
+        if (paperSize == "A0")
+        {
+            // A0: 1/8 ở bên phải và 1/4 từ dưới lên
+            cropWidth = Math.Max(1, sourceBitmap.Width / 8);
+            cropX = sourceBitmap.Width - cropWidth;
+            cropHeight = Math.Max(1, sourceBitmap.Height / 4);
+            cropY = sourceBitmap.Height - cropHeight;
+        }
+        else
+        {
+            // Default: 1/4 ở bên phải và 1/2 từ dưới lên
+            cropWidth = Math.Max(1, sourceBitmap.Width / 4);
+            cropX = sourceBitmap.Width - cropWidth;
+            cropHeight = Math.Max(1, sourceBitmap.Height / 2);
+            cropY = sourceBitmap.Height - cropHeight;
+        }
+
+        var scale = paperSize == "A0" ? A0OutputScale : OutputScale;
+        var outputWidth = Math.Max(1, (int)Math.Round(cropWidth * scale));
+        var outputHeight = Math.Max(1, (int)Math.Round(cropHeight * scale));
 
         var outputBitmap = new Bitmap(outputWidth, outputHeight, PixelFormat.Format24bppRgb);
 
         using var graphics = Graphics.FromImage(outputBitmap);
-        graphics.CompositingQuality = CompositingQuality.HighSpeed;
-        graphics.InterpolationMode = InterpolationMode.Bilinear;
-        graphics.SmoothingMode = SmoothingMode.None;
-        graphics.PixelOffsetMode = PixelOffsetMode.HighSpeed;
+        graphics.CompositingQuality = CompositingQuality.HighQuality;
+        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        graphics.SmoothingMode = SmoothingMode.HighQuality;
+        graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
         graphics.Clear(Color.White);
 
         var destinationRect = new Rectangle(0, 0, outputWidth, outputHeight);
@@ -132,6 +149,29 @@ public sealed class PdfProcessingService
         graphics.DrawImage(sourceBitmap, destinationRect, sourceRect, GraphicsUnit.Pixel);
 
         return outputBitmap;
+    }
+
+    private static string DetectPaperSize(SizeF pageSize)
+    {
+        const float PointsPerInch = 72f;
+        const float InchPerMm = 1f / 25.4f;
+
+        var widthMm = pageSize.Width / PointsPerInch / InchPerMm;
+        var heightMm = pageSize.Height / PointsPerInch / InchPerMm;
+
+        var (minDim, maxDim) = widthMm > heightMm
+            ? (heightMm, widthMm)
+            : (widthMm, heightMm);
+
+        return (minDim, maxDim) switch
+        {
+            ( >= 206 and <= 214, >= 290 and <= 304) => "A4",
+            ( >= 279 and <= 287, >= 407 and <= 421) => "A3",
+            ( >= 420 and <= 430, >= 594 and <= 612) => "A2",
+            ( >= 594 and <= 604, >= 840 and <= 860) => "A1",
+            ( >= 840 and <= 850, > 860) => "A0",
+            _ => "Unknown"
+        };
     }
 }
 

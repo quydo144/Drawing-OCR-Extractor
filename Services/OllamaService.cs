@@ -10,7 +10,6 @@ public sealed class OllamaService
     private const string OllamaApiUrl = "http://localhost:11434/api/generate";
     private const string OllamaOcrModel = "glm-ocr:latest";
     private const int OllamaTimeoutSeconds = 60;
-    private const int MaxRetryAttempts = 3;
 
     public async Task<OcrExtractionResult> ProcessPagesAsync(
         IReadOnlyList<Base64PageEntry> pages,
@@ -39,7 +38,7 @@ public sealed class OllamaService
 
             var page = orderedPages[i];
             var progressMessage = $"Đã xử lý Ollama trang {page.PageNumber}";
-            log($"Gửi trang {page.PageNumber} lên Ollama...");
+            log($"Gửi trang {page.PageNumber} lên Ollama");
 
             try
             {
@@ -51,51 +50,49 @@ public sealed class OllamaService
                 var request = new OllamaRequest(OllamaOcrModel, prompt, [page.ImageBase64], false);
                 var body = JsonSerializer.Serialize(request);
 
-                var isSuccess = false;
-                string? lastErrorMessage = null;
-
-                for (var attempt = 1; attempt <= MaxRetryAttempts && !isSuccess; attempt++)
+                try
                 {
-                    try
+                    using var content = new StringContent(body, Encoding.UTF8, "application/json");
+                    using var response = await httpClient.PostAsync(OllamaApiUrl, content, cancellationToken);
+                    var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                    if (!response.IsSuccessStatusCode)
                     {
-                        using var content = new StringContent(body, Encoding.UTF8, "application/json");
-                        using var response = await httpClient.PostAsync(OllamaApiUrl, content, cancellationToken);
-                        var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-
-                        if (!response.IsSuccessStatusCode)
-                        {
-                            lastErrorMessage = $"HTTP {(int)response.StatusCode}: {responseBody}";
-                            log($"Trang {page.PageNumber} lỗi HTTP attempt {attempt}/{MaxRetryAttempts}: {lastErrorMessage}");
-                            continue;
-                        }
-
+                        var errorMessage = $"HTTP {(int)response.StatusCode}: {responseBody}";
+                        log($"Trang {page.PageNumber} lỗi: {errorMessage}");
+                        rows.Add(CreateFailedRow(page.PageNumber, errorMessage));
+                        progressMessage = $"Trang {page.PageNumber} lỗi: {errorMessage}";
+                    }
+                    else
+                    {
                         var ocrText = ExtractOllamaResponseText(responseBody);
 
                         if (string.IsNullOrWhiteSpace(ocrText))
                         {
-                            lastErrorMessage = "OCR response rỗng.";
-                            continue;
+                            var errorMessage = "OCR response rỗng.";
+                            log($"Trang {page.PageNumber} lỗi: {errorMessage}");
+                            rows.Add(CreateFailedRow(page.PageNumber, errorMessage));
+                            progressMessage = $"Trang {page.PageNumber} lỗi: {errorMessage}";
                         }
-
-                        ocrBlocks.Add(new OcrPageBlock(page.PageNumber, ocrText));
-                        isSuccess = true;
-                    }
-                    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-                    {
-                        lastErrorMessage = $"Timeout khi gọi Ollama (vượt {OllamaTimeoutSeconds} giây).";
-                    }
-                    catch (Exception ex)
-                    {
-                        lastErrorMessage = ex.Message;
+                        else
+                        {
+                            ocrBlocks.Add(new OcrPageBlock(page.PageNumber, ocrText));
+                        }
                     }
                 }
-
-                if (!isSuccess)
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
                 {
-                    var finalError = lastErrorMessage ?? "Unknown error";
-                    log($"Trang {page.PageNumber} thất bại sau {MaxRetryAttempts} lần: {finalError}");
-                    rows.Add(CreateFailedRow(page.PageNumber, finalError));
-                    progressMessage = $"Trang {page.PageNumber} lỗi: {finalError}";
+                    var errorMessage = $"Timeout khi gọi Ollama (vượt {OllamaTimeoutSeconds} giây).";
+                    log($"Trang {page.PageNumber} lỗi: {errorMessage}");
+                    rows.Add(CreateFailedRow(page.PageNumber, errorMessage));
+                    progressMessage = $"Trang {page.PageNumber} lỗi: {errorMessage}";
+                }
+                catch (Exception ex)
+                {
+                    var errorMessage = ex.Message;
+                    log($"Trang {page.PageNumber} lỗi: {errorMessage}");
+                    rows.Add(CreateFailedRow(page.PageNumber, errorMessage));
+                    progressMessage = $"Trang {page.PageNumber} lỗi: {errorMessage}";
                 }
             }
             finally
