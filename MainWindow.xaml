@@ -5,12 +5,13 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Drawing OCR Extractor - Ollama + Gemini"
-        Height="560"
+        Height="620"
         Width="820"
-        MinHeight="560"
+        MinHeight="620"
         MinWidth="820">
     <Grid Margin="12">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -52,6 +53,30 @@
         <Grid Grid.Row="2"
               Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="140"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBox x:Name="ExcelOutputFolderTextBox"
+                     Grid.Column="0"
+                     IsReadOnly="True"
+                     FontSize="13"
+                     VerticalContentAlignment="Center"
+                     Padding="7,5"
+                     Text="Mặc định: Result"/>
+
+            <Button Grid.Column="2"
+                    x:Name="SelectExcelOutputFolderButton"
+                    Content="Chọn thư mục lưu"
+                    Height="34"
+                    FontSize="13"
+                    Click="SelectExcelOutputFolderButton_Click"/>
+        </Grid>
+
+        <Grid Grid.Row="3"
+              Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="150"/>
                 <ColumnDefinition Width="12"/>
                 <ColumnDefinition Width="*"/>
@@ -71,7 +96,7 @@
                          PasswordChanged="GeminiApiKeyPasswordBox_PasswordChanged"/>
         </Grid>
 
-        <StackPanel Grid.Row="3"
+        <StackPanel Grid.Row="4"
                     Orientation="Horizontal"
                     Margin="0,0,0,10">
             <Button x:Name="ConvertButton"
@@ -90,7 +115,7 @@
                     Click="CancelButton_Click"/>
         </StackPanel>
 
-        <Grid Grid.Row="4"
+        <Grid Grid.Row="5"
               Margin="0,0,0,10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -120,7 +145,7 @@
                        Text="Thời gian chạy: 00:00"/>
         </Grid>
 
-        <TextBox Grid.Row="5"
+        <TextBox Grid.Row="6"
                  x:Name="OutputTextBox"
                  FontFamily="Consolas"
                  FontSize="12"

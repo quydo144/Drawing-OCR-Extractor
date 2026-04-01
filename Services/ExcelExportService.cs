@@ -6,14 +6,15 @@ namespace DrawingOcrExtractor.Services;
 
 public sealed class ExcelExportService
 {
-    public string Export(string pdfPath, IReadOnlyList<OllamaExcelRow> rows)
+    public string Export(string pdfPath, IReadOnlyList<OllamaExcelRow> rows, string exportTimestamp, string? outputDirectory = null)
     {
         var pdfFileName = Path.GetFileNameWithoutExtension(pdfPath);
         var safePdfFileName = SanitizeFileName(pdfFileName);
-        var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
-        var resultDirectory = Path.Combine(AppContext.BaseDirectory, "Result");
+        var resultDirectory = string.IsNullOrWhiteSpace(outputDirectory)
+            ? Path.Combine(AppContext.BaseDirectory, "Result")
+            : outputDirectory;
         Directory.CreateDirectory(resultDirectory);
-        var excelPath = Path.Combine(resultDirectory, $"List_{safePdfFileName}_{timestamp}.xlsx");
+        var excelPath = Path.Combine(resultDirectory, $"List_{safePdfFileName}_{exportTimestamp}.xlsx");
 
         using var workbook = File.Exists(excelPath)
             ? new XLWorkbook(excelPath)

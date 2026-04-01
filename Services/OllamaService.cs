@@ -30,7 +30,6 @@ public sealed class OllamaService
         var rows = new List<OllamaExcelRow>();
         var ocrBlocks = new List<OcrPageBlock>();
         var orderedPages = pages.OrderBy(p => p.PageNumber).ToList();
-        log("Đã sắp xếp danh sách theo PageNumber tăng dần. Bắt đầu OCR ảnh bằng glm-ocr tuần tự.");
 
         for (var i = 0; i < orderedPages.Count; i++)
         {

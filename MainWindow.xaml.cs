@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
+using Forms = System.Windows.Forms;
 using Microsoft.Win32;
 using DrawingOcrExtractor.Models;
 using DrawingOcrExtractor.Services;
@@ -21,6 +22,7 @@ public partial class MainWindow : System.Windows.Window
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Drawing OCR Extractor");
     private static readonly string SettingsFilePath = Path.Combine(SettingsDirectory, "ui-settings.json");
+    private static readonly string DefaultExcelOutputDirectory = Path.Combine(AppContext.BaseDirectory, "Result");
     private readonly PdfProcessingService _pdfProcessingService;
     private readonly OllamaService _ollamaService;
     private readonly GeminiNormalizationService _geminiNormalizationService;
@@ -29,6 +31,7 @@ public partial class MainWindow : System.Windows.Window
     private readonly DispatcherTimer _runTimer;
     private bool _isRestoringGeminiApiKey;
     private string? _pdfPath;
+    private string? _excelOutputDirectory;
     private CancellationTokenSource? _runCts;
 
     public MainWindow()
@@ -44,7 +47,8 @@ public partial class MainWindow : System.Windows.Window
         };
         _runTimer.Tick += RunTimer_Tick;
         InitializeComponent();
-        LoadGeminiApiKeyFromLocalStore();
+        LoadUiSettingsFromLocalStore();
+        RefreshExcelOutputFolderText();
     }
 
     private void GeminiApiKeyPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
@@ -75,6 +79,28 @@ public partial class MainWindow : System.Windows.Window
         _pdfPath = dialog.FileName;
         PdfPathTextBox.Text = _pdfPath;
         AppendLine($"Đã chọn: {_pdfPath}");
+    }
+
+    private void SelectExcelOutputFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        using var dialog = new Forms.FolderBrowserDialog
+        {
+            Description = "Chọn thư mục lưu file Excel",
+            UseDescriptionForTitle = true,
+            InitialDirectory = string.IsNullOrWhiteSpace(_excelOutputDirectory)
+                ? DefaultExcelOutputDirectory
+                : _excelOutputDirectory
+        };
+
+        if (dialog.ShowDialog() != Forms.DialogResult.OK || string.IsNullOrWhiteSpace(dialog.SelectedPath))
+        {
+            return;
+        }
+
+        _excelOutputDirectory = dialog.SelectedPath;
+        RefreshExcelOutputFolderText();
+        SaveGeminiApiKeyToLocalStore(GeminiApiKeyPasswordBox.Password.Trim());
+        AppendLine($"Đã chọn thư mục lưu Excel: {_excelOutputDirectory}");
     }
 
     private async void ConvertButton_Click(object sender, RoutedEventArgs e)
@@ -123,6 +149,7 @@ public partial class MainWindow : System.Windows.Window
 
             var rows = new List<OllamaExcelRow>();
             string? excelPath = null;
+            var exportTimestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
 
             foreach (var chunk in pages.Chunk(OcrGeminiBatchSize))
             {
@@ -161,7 +188,7 @@ public partial class MainWindow : System.Windows.Window
 
                     if (normalizedRows.Count > 0)
                     {
-                        excelPath = _excelExportService.Export(_pdfPath, rows);
+                        excelPath = _excelExportService.Export(_pdfPath, rows, exportTimestamp, _excelOutputDirectory);
                         AppendLine($"Đã cập nhật Excel sau batch: +{normalizedRows.Count} dòng, tổng {rows.Count} dòng.");
                         AppendLine($"File Excel hiện tại: {excelPath}");
                     }
@@ -178,7 +205,7 @@ public partial class MainWindow : System.Windows.Window
             }
             else
             {
-                excelPath ??= _excelExportService.Export(_pdfPath, rows);
+                excelPath ??= _excelExportService.Export(_pdfPath, rows, exportTimestamp, _excelOutputDirectory);
                 AppendLine($"Đã ghi {rows.Count} dòng vào Excel.");
                 AppendLine($"Đã xuất Excel: {excelPath}");
             }
@@ -397,7 +424,7 @@ public partial class MainWindow : System.Windows.Window
         });
     }
 
-    private void LoadGeminiApiKeyFromLocalStore()
+    private void LoadUiSettingsFromLocalStore()
     {
         try
         {
@@ -408,14 +435,21 @@ public partial class MainWindow : System.Windows.Window
 
             var json = File.ReadAllText(SettingsFilePath, Encoding.UTF8);
             var settings = JsonSerializer.Deserialize<UiSettings>(json);
-            if (settings is null || string.IsNullOrWhiteSpace(settings.GeminiApiKeyProtected))
+            if (settings is null)
             {
                 return;
             }
 
-            var apiKey = UnprotectText(settings.GeminiApiKeyProtected);
-            _isRestoringGeminiApiKey = true;
-            GeminiApiKeyPasswordBox.Password = apiKey;
+            _excelOutputDirectory = string.IsNullOrWhiteSpace(settings.ExcelOutputDirectory)
+                ? null
+                : settings.ExcelOutputDirectory;
+
+            if (!string.IsNullOrWhiteSpace(settings.GeminiApiKeyProtected))
+            {
+                var apiKey = UnprotectText(settings.GeminiApiKeyProtected);
+                _isRestoringGeminiApiKey = true;
+                GeminiApiKeyPasswordBox.Password = apiKey;
+            }
         }
         catch
         {
@@ -424,10 +458,11 @@ public partial class MainWindow : System.Windows.Window
         finally
         {
             _isRestoringGeminiApiKey = false;
+            RefreshExcelOutputFolderText();
         }
     }
 
-    private static void SaveGeminiApiKeyToLocalStore(string apiKey)
+    private void SaveGeminiApiKeyToLocalStore(string apiKey)
     {
         try
         {
@@ -436,7 +471,8 @@ public partial class MainWindow : System.Windows.Window
             {
                 GeminiApiKeyProtected = string.IsNullOrWhiteSpace(apiKey)
                     ? string.Empty
-                    : ProtectText(apiKey)
+                    : ProtectText(apiKey),
+                ExcelOutputDirectory = _excelOutputDirectory ?? string.Empty
             };
 
             var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
@@ -465,5 +501,18 @@ public partial class MainWindow : System.Windows.Window
     private sealed class UiSettings
     {
         public string GeminiApiKeyProtected { get; init; } = string.Empty;
+        public string ExcelOutputDirectory { get; init; } = string.Empty;
+    }
+
+    private void RefreshExcelOutputFolderText()
+    {
+        if (ExcelOutputFolderTextBox is null)
+        {
+            return;
+        }
+
+        ExcelOutputFolderTextBox.Text = string.IsNullOrWhiteSpace(_excelOutputDirectory)
+            ? DefaultExcelOutputDirectory
+            : _excelOutputDirectory;
     }
 }
